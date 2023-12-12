@@ -9,7 +9,7 @@ namespace OAuth2CoreLib.Models
         [Key]
         public int Id { get; set; }
         [Required]
-        //[Column("AuthorizationCodeId")]
+        [Column("AuthorizationCodeId")]
         public AuthorizationCode AuthorizationCode { get; set; }
         [Required]
         public ResourceScope ResourceScope { get; set; }
