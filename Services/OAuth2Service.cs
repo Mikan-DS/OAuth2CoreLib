@@ -6,6 +6,7 @@ using OAuth2CoreLib.RequestFields;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace OAuth2CoreLib.Services
@@ -13,12 +14,16 @@ namespace OAuth2CoreLib.Services
     public class OAuth2Service : IOAuth2Service
     {
         public readonly OAuthDbContext oAuthDbContext;
+        private readonly IConfiguration _configuration;
         public OAuth2Service(
-                OAuthDbContext oAuthDbContext
+                OAuthDbContext oAuthDbContext,
+                IConfiguration configuration
+
             )
         {
 
             this.oAuthDbContext = oAuthDbContext;
+            _configuration = configuration;
 
         }
 
@@ -124,13 +129,7 @@ namespace OAuth2CoreLib.Services
             {
                 throw new WrongClientException();
             }
-            //var requestedScopes = OAuthDbContext.AuthorizationCodeScopes
-            //    .Include(c => c.ResourceScope)
-            //    .Include(c => c.AuthorizationCode)
-            //    .FirstOrDefault(c => c.AuthorizationCode.Code == tokenRequest.code);
-            ////.Select(c => c.ResourceScope.Scope);
 
-            //string[] scopes = requestedScopes..Select(c => c.ResourceScope.Scope).ToArray();
 
             AuthorizationCode? code = OAuthDbContext.AuthorizationCodes
                 .Include(c => c.User)
@@ -161,14 +160,16 @@ namespace OAuth2CoreLib.Services
                     );
             }
 
+            X509Certificate2 certificate = new X509Certificate2(_configuration["Certificate:private"], _configuration["Certificate:private_key"]);
 
             SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims.ToArray()),
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes("1234567890123456789012345678901234567890123456789012345678901234567890")), // Сделать шифрование с открытыми и закрытыми ключами
-                    SecurityAlgorithms.HmacSha256Signature
-                    ),
+                SigningCredentials = new X509SigningCredentials(certificate),
+                //new SigningCredentials(
+                //new SymmetricSecurityKey(Encoding.UTF8.GetBytes("1234567890123456789012345678901234567890123456789012345678901234567890")), // Сделать шифрование с открытыми и закрытыми ключами
+                    //SecurityAlgorithms.HmacSha256Signature
+                    //),
                 Issuer = Environment.GetEnvironmentVariable("ASPNETCORE_URLS"),
                 
             //SigningCredentials = new SigningCredentials()//new X509SigningCredentials(certificate),
