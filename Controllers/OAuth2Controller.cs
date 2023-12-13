@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using OAuth2CoreLib.Exceptions;
 using OAuth2CoreLib.RequestFields;
 using OAuth2CoreLib.Services;
 
@@ -18,24 +19,21 @@ namespace OAuth2CoreLib.Controllers
         [HttpPost("token")]
         public IActionResult Token(TokenRequest tokenRequest)
         {
-            if (string.IsNullOrEmpty(tokenRequest.grant_type))
-            {
-                return BadRequest("Invalid request: grant_type is required.");
-            }
-            if (string.IsNullOrEmpty(tokenRequest.client_id))
-            {
-                return BadRequest("Invalid request: client_id is required.");
 
-            }
 
             try
             {
            
                  return Ok(oAuth2Service.GenerateToken(tokenRequest));
             }
+            catch (OAuthException e)
+            {
+                return BadRequest(e.Message);
+            }
             catch (Exception)
             {
-                return BadRequest("Undhandled exception raised");
+
+                return BadRequest("unhandled exception raised");
             }
 
             // Шаг 1: Проверить grant_type (тип гранта) и обработать соответствующую логику авторизации

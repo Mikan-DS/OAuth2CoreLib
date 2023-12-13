@@ -8,11 +8,16 @@ namespace OAuth2CoreLib.Models
     public class User
     {
         [Key]
-        public string user_id { get; set; } = string.Empty;
-        public string? secret { get; set; }
+        public string UserId { get; set; } = string.Empty;
+        public string? Secret { get; set; }
+
+        public bool Enabled { get; set; } = true;
+        public DateTime Created { get; set; } = DateTime.UtcNow;
+        public DateTime Updated { get; set; } = DateTime.UtcNow;
+        public DateTime? LastAccessed { get; set; }
 
         [JsonIgnore]
-        [InverseProperty("user")]
+        [InverseProperty("User")]
         public List<UserAllowedScope> Scopes { get; set; } = new List<UserAllowedScope>();
     }
 }

@@ -37,7 +37,7 @@ namespace OAuth2CoreLib.Services
             }
             try
             {
-                User user = new User() { user_id = user_id, secret = secret };
+                User user = new User() { UserId = user_id, Secret = secret };
 
                 OAuthDbContext.Users.Add(user);
                 OAuthDbContext.SaveChanges();
@@ -56,7 +56,7 @@ namespace OAuth2CoreLib.Services
             Client? client = OAuthDbContext.Clients.Include(e => e.Scopes).ThenInclude(cs => cs.ResourceScope).FirstOrDefault(c => c.ClientId == authRequest.client_id);
             if (client == null)
             {
-                throw new WrongClientException();
+                throw new OAuthException("Client not found");
             }
 
             string cryptoKey = GenerateCryptoKey(32);
@@ -86,7 +86,7 @@ namespace OAuth2CoreLib.Services
                 catch (Exception)
                 {
 
-                    throw new WrongUserException();
+                    throw new OAuthException("Client scopes exception");
                 }
                 
                 foreach (string scope in requestedScopes)
@@ -95,7 +95,7 @@ namespace OAuth2CoreLib.Services
 
                     if (resourceScope == null)
                     {
-                        throw new WrongClientScopeException();
+                        throw new OAuthException("Non available scope for current client");
                     }
 
                     if (allowedUserScopes.Any(s => s.Scope == scope))
@@ -109,7 +109,8 @@ namespace OAuth2CoreLib.Services
 
                 }
             }
-
+            user.LastAccessed = DateTime.UtcNow;
+            client.LastAccessed = DateTime.UtcNow;
             OAuthDbContext.AuthorizationCodes.Add(code);
             OAuthDbContext.AuthorizationCodeScopes.AddRange(scopes);
 
@@ -120,11 +121,21 @@ namespace OAuth2CoreLib.Services
 
         public string GenerateToken(TokenRequest tokenRequest)
         {
+            if (string.IsNullOrEmpty(tokenRequest.grant_type))
+            {
+                throw new OAuthException("grant_type is required.");
+            }
+            if (string.IsNullOrEmpty(tokenRequest.client_id))
+            {
+                throw new OAuthException("client_id is required.");
+
+            }
+
             tokenRequest.client_secret ??= String.Empty;
             Client? client = OAuthDbContext.Clients.FirstOrDefault(c => c.ClientId == tokenRequest.client_id && c.Secret == tokenRequest.client_secret);
             if (client == null)
             {
-                throw new WrongClientException();
+                throw new OAuthException("Client not found");
             }
 
 
@@ -134,14 +145,9 @@ namespace OAuth2CoreLib.Services
                 .ThenInclude(c => c.ResourceScope)
                 .FirstOrDefault(a => a.Code == tokenRequest.code);
 
-            if (code == null)
+            if (code == null || code.Activated)
             {
-                throw new AuthCodeException();
-            }
-
-            if (code.Activated)
-            {
-                throw new Auth2Exception("Auth code already activated");
+                throw new OAuthException("Code is wrong or old");
             }
 
             string[] scopes = code.Scopes.Select(s => s.ResourceScope.Scope).ToArray();
@@ -158,7 +164,7 @@ namespace OAuth2CoreLib.Services
             if (code.User != null)
             {
                 claims.Add(
-                    new Claim("user_id", code.User.user_id)
+                    new Claim("user_id", code.User.UserId)
                     );
             }
 
@@ -173,6 +179,7 @@ namespace OAuth2CoreLib.Services
             };
             SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
             code.Activated = true;
+            client.LastAccessed = DateTime.UtcNow;
             oAuthDbContext.SaveChanges();
 
             return tokenHandler.WriteToken(token);
@@ -180,7 +187,7 @@ namespace OAuth2CoreLib.Services
 
         public User? GetAuthenticatedUser(string user_id, string? secret)
         {
-            return OAuthDbContext.Users.Include(u => u.Scopes).ThenInclude(s => s.ResourceScope).FirstOrDefault(u => u.user_id == user_id && u.secret==secret);
+            return OAuthDbContext.Users.Include(u => u.Scopes).ThenInclude(s => s.ResourceScope).FirstOrDefault(u => u.UserId == user_id && u.Secret==secret);
         }
 
         public string GenerateCryptoKey(int size=32)
@@ -192,7 +199,7 @@ namespace OAuth2CoreLib.Services
             return code;
         }
 
-        public Client CreateOrModifyClient(string client_id, string? secret, bool? enabled, string[]? scopes)
+        public Client CreateOrModifyClient(string client_id, string? secret, bool? enabled, string[]? scope)
         {
             Client client = OAuthDbContext.Clients.FirstOrDefault(c => c.ClientId == client_id) ?? new Client()
             {
@@ -200,11 +207,11 @@ namespace OAuth2CoreLib.Services
                 Secret = String.Empty,
                 Enabled = (bool)(enabled != null ? enabled : true),
             };
-            if (scopes != null)
+            if (scope != null)
             {
                 var clientScopes = OAuthDbContext.ClientScopes.Where(cs => cs.Client == client);
                 OAuthDbContext.ClientScopes.AddRange(
-                    SynchScopes(clientScopes, scopes, OAuthDbContext.ClientScopes).Select(s => new ClientScope() { Client = client, ResourceScope = s })
+                    SynchScopes(clientScopes, scope, OAuthDbContext.ClientScopes).Select(s => new ClientScope() { Client = client, ResourceScope = s })
                     );
                 client.Updated = DateTime.UtcNow;
             }
@@ -224,23 +231,32 @@ namespace OAuth2CoreLib.Services
             return client;
         }
 
-        public User CreateOrModifyUser(string user_id, string? secret, string[]? scopes)
+        public User CreateOrModifyUser(string user_id, string? secret, bool? enabled, string[]? scope)
         {
-            User user = OAuthDbContext.Users.FirstOrDefault(u => u.user_id == user_id) ?? new User()
+            User user = OAuthDbContext.Users.FirstOrDefault(u => u.UserId == user_id) ?? new User()
             {
-                user_id = user_id,
-                secret = String.Empty,
+                UserId = user_id,
+                Secret = String.Empty,
             };
-            if (scopes != null)
+            if (scope != null)
             {
                 var usersScopes = OAuthDbContext.UserAllowedScopes.Where(cs => cs.User == user);
                 OAuthDbContext.UserAllowedScopes.AddRange(
-                    SynchScopes(usersScopes, scopes, OAuthDbContext.UserAllowedScopes).Select(s => new UserAllowedScope() { User = user, ResourceScope = s })
+                    SynchScopes(usersScopes, scope, OAuthDbContext.UserAllowedScopes).Select(s => new UserAllowedScope() { User = user, ResourceScope = s })
                     );
+                user.Updated = DateTime.UtcNow;
             }
+
+            if (enabled != null)
+            {
+                user.Enabled = (bool)enabled;
+                user.Updated = DateTime.UtcNow;
+            }
+
             if (secret != null)
             { // Секрет может быть и пустым
-                user.secret = secret;
+                user.Secret = (string)secret;
+                user.Updated = DateTime.UtcNow;
             }
             OAuthDbContext.SaveChanges();
             return user;
