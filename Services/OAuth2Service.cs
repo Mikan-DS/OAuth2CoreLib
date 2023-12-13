@@ -7,7 +7,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 
 namespace OAuth2CoreLib.Services
 {
@@ -111,10 +110,8 @@ namespace OAuth2CoreLib.Services
                 }
             }
 
-
             OAuthDbContext.AuthorizationCodes.Add(code);
             OAuthDbContext.AuthorizationCodeScopes.AddRange(scopes);
-
 
             OAuthDbContext.SaveChanges(true);
 
@@ -230,9 +227,9 @@ namespace OAuth2CoreLib.Services
             };
             if (scopes != null)
             {
-                var usersScopes = OAuthDbContext.UserAllowedScopes.Where(cs => cs.user == user);
+                var usersScopes = OAuthDbContext.UserAllowedScopes.Where(cs => cs.User == user);
                 OAuthDbContext.UserAllowedScopes.AddRange(
-                    SynchScopes(usersScopes, scopes, OAuthDbContext.UserAllowedScopes).Select(s => new UserAllowedScope() { user = user, ResourceScope = s })
+                    SynchScopes(usersScopes, scopes, OAuthDbContext.UserAllowedScopes).Select(s => new UserAllowedScope() { User = user, ResourceScope = s })
                     );
             }
             if (secret != null)

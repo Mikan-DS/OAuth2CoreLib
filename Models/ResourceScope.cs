@@ -9,6 +9,6 @@ namespace OAuth2CoreLib.Models
         [Key]
         public int Id { get; set; }
         [Required]
-        public string Scope { get; set; }
+        public string Scope { get; set; } = string.Empty;
     }
 }

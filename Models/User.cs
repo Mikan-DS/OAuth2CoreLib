@@ -8,11 +8,11 @@ namespace OAuth2CoreLib.Models
     public class User
     {
         [Key]
-        public string user_id { get; set; }
+        public string user_id { get; set; } = string.Empty;
         public string? secret { get; set; }
 
         [JsonIgnore]
         [InverseProperty("user")]
-        public List<UserAllowedScope> Scopes { get; set; }
+        public List<UserAllowedScope> Scopes { get; set; } = new List<UserAllowedScope>();
     }
 }

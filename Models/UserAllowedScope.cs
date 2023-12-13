@@ -7,13 +7,13 @@ namespace OAuth2CoreLib.Models
     public class UserAllowedScope: IScope
     {
         [Key]
-        public int key { get; set; }
+        public int Id { get; set; }
 
         [Required]
-        public User user { get; set; }
+        public User User { get; set; } = new User();
 
         [Required]
-        public ResourceScope ResourceScope { get; set; }
+        public ResourceScope ResourceScope { get; set; } = new ResourceScope();
 
     }
 }
