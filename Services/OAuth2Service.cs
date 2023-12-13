@@ -139,6 +139,11 @@ namespace OAuth2CoreLib.Services
                 throw new AuthCodeException();
             }
 
+            if (code.Activated)
+            {
+                throw new Auth2Exception("Auth code already activated");
+            }
+
             string[] scopes = code.Scopes.Select(s => s.ResourceScope.Scope).ToArray();
 
             // Создание JWT токена
@@ -166,8 +171,9 @@ namespace OAuth2CoreLib.Services
                 Issuer = Environment.GetEnvironmentVariable("ASPNETCORE_URLS"),
                 Expires = DateTime.UtcNow.AddHours(12)
             };
-            //tokenDescriptor.I
             SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+            code.Activated = true;
+            oAuthDbContext.SaveChanges();
 
             return tokenHandler.WriteToken(token);
         }
@@ -234,7 +240,7 @@ namespace OAuth2CoreLib.Services
             }
             if (secret != null)
             { // Секрет может быть и пустым
-                user.secret = (string)secret;
+                user.secret = secret;
             }
             OAuthDbContext.SaveChanges();
             return user;
