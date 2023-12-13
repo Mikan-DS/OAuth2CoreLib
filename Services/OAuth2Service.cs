@@ -166,10 +166,6 @@ namespace OAuth2CoreLib.Services
             {
                 Subject = new ClaimsIdentity(claims.ToArray()),
                 SigningCredentials = new X509SigningCredentials(certificate),
-                //new SigningCredentials(
-                //new SymmetricSecurityKey(Encoding.UTF8.GetBytes("1234567890123456789012345678901234567890123456789012345678901234567890")), // Сделать шифрование с открытыми и закрытыми ключами
-                    //SecurityAlgorithms.HmacSha256Signature
-                    //),
                 Issuer = Environment.GetEnvironmentVariable("ASPNETCORE_URLS"),
                 
             //SigningCredentials = new SigningCredentials()//new X509SigningCredentials(certificate),
