@@ -167,11 +167,7 @@ namespace OAuth2CoreLib.Services
                 Subject = new ClaimsIdentity(claims.ToArray()),
                 SigningCredentials = new X509SigningCredentials(certificate),
                 Issuer = Environment.GetEnvironmentVariable("ASPNETCORE_URLS"),
-                
-            //SigningCredentials = new SigningCredentials()//new X509SigningCredentials(certificate),
-
-            // Установка срока действия токена
-             Expires = DateTime.UtcNow.AddHours(12),
+                Expires = DateTime.UtcNow.AddHours(12)
             };
             //tokenDescriptor.I
             SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
